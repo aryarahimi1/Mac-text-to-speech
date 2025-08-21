@@ -99,7 +99,7 @@ col1, col2 = st.columns([1, 1])
 with col1:
     if st.button("🎤 Submit", type="primary"):
         if text_input.strip():
-            base_rate = 200
+            base_rate = 150
             adjusted_rate = int(base_rate * st.session_state.speed_setting)
             
             os.system(f'say -r {adjusted_rate} "{text_input}" &')
