@@ -23,7 +23,7 @@ A simple and elegant text-to-speech web application built with Streamlit that co
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/text-to-speech-app.git
+   git clone https://github.com/aryarahimi1/text-to-speech-app.git
    cd text-to-speech-app
    ```
 
