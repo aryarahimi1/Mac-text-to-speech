@@ -126,17 +126,13 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License
 
 ## 🙏 Acknowledgments
 
 - Built with [Streamlit](https://streamlit.io/)
 - Uses macOS built-in `say` command for text-to-speech
 - Inspired by the need for a simple, fast text-to-speech solution
-
-## 📞 Support
-
-If you have any questions or run into issues, please open an issue on GitHub or contact [your-email@example.com].
 
 ---
 
