@@ -75,7 +75,9 @@ Mac-text-to-speech/
 
 ## 📱 Screenshots
 
-*Add screenshots of your app here*
+
+
+<img width="2000" height="1352" alt="CleanShot 2025-08-21 at 14 11 21@2x" src="https://github.com/user-attachments/assets/aad7932d-843a-4564-8638-10190ff22c62" />
 
 ## 🔮 Future Features
 
