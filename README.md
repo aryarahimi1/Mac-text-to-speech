@@ -23,8 +23,8 @@ A simple and elegant text-to-speech web application built with Streamlit that co
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/aryarahimi1/text-to-speech-app.git
-   cd text-to-speech-app
+   git clone https://github.com/aryarahimi1/Mac-text-to-speech.git
+   cd Mac-text-to-speech
    ```
 
 2. **Install dependencies**
@@ -59,7 +59,7 @@ A simple and elegant text-to-speech web application built with Streamlit that co
 ## 📁 Project Structure
 
 ```
-text-to-speech-app/
+Mac-text-to-speech/
 │
 ├── streamlit_app.py    # Main application file
 ├── README.md          # Project documentation
