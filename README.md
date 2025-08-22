@@ -1,23 +1,27 @@
 # 🗣️ Text to Speech Web App
 
-A simple and elegant text-to-speech web application built with Streamlit that converts your text into speech using macOS's built-in `say` command.
+A simple and elegant text-to-speech web application built with Streamlit that converts your text into speech using macOS's built-in `say` command or ElevenLabs' API for premium AI voices.
 
 ## ✨ Features
 
-- **Clean, modern interface** with dark theme
-- **Variable speed control** (0.75x to 2.0x)
-- **Multi-line text support** with large text area
-- **Real-time feedback** showing current reading speed
-- **Start/Stop controls** for speech management
-- **Responsive design** that works on different screen sizes
+- Clean, modern interface (dark theme)
+- Variable speed control (0.75x → 2.0x)
+- Multi‑line text input
+- Submit shows a built‑in audio player (no auto‑play)
+- Transcript displayed under the player with word/character counts
+- Start/Stop TTS controls (Stop affects macOS `say`; player controls are separate)
+- Audio saving with history page (play, download, delete)
+- macOS output saved as WAV for browser compatibility (AIFF → WAV conversion)
+- ElevenLabs integration: enter API key and pick a voice
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- macOS (required for the `say` command)
-- Python 3.7 or higher
+- macOS (required for the `say` command) OR any OS for ElevenLabs (internet required)
+- Python 3.9 or higher
 - pip package manager
+- (Optional) ElevenLabs account and API key: https://elevenlabs.io
 
 ### Installation
 
@@ -29,7 +33,7 @@ A simple and elegant text-to-speech web application built with Streamlit that co
 
 2. **Install dependencies**
    ```bash
-   pip install streamlit
+   pip install -r requirements.txt
    ```
 
 3. **Run the application**
@@ -38,6 +42,17 @@ A simple and elegant text-to-speech web application built with Streamlit that co
    ```
 
 4. **Open your browser** and navigate to `http://localhost:8501`
+
+## 🔑 Using ElevenLabs
+
+1. Select "ElevenLabs" as the provider.
+2. Enter your ElevenLabs API key (stored only in the current session).
+3. Pick a voice from your account.
+4. Type your text and click Submit. The generated MP3 will be saved in `saved_audio/` and appear in Audio History.
+
+Notes:
+- Current build uses the `eleven_monolingual_v1` model and adjusts voice settings based on speed.
+- No model picker yet; can be added later.
 
 ## 🎮 Usage
 
@@ -62,38 +77,47 @@ A simple and elegant text-to-speech web application built with Streamlit that co
 Mac-text-to-speech/
 │
 ├── streamlit_app.py    # Main application file
-├── README.md          # Project documentation
-└── requirements.txt   # Python dependencies (optional)
+├── README.md           # Project documentation
+├── requirements.txt    # Python dependencies
+└── saved_audio/        # Generated audio files + metadata.json
 ```
 
 ## 🛠️ Technical Details
 
-- **Framework**: Streamlit for the web interface
-- **Text-to-Speech**: macOS `say` command with adjustable rate
-- **Styling**: Custom CSS for dark theme and modern appearance
-- **State Management**: Streamlit session state for app persistence
+- Framework: Streamlit
+- macOS TTS: `say -r <rate>` generates AIFF; app converts to WAV using `afconvert` for browser playback
+- ElevenLabs: REST API via `requests`; returns MP3
+- Styling: custom CSS
+- State: Streamlit session_state
 
-## 📱 Screenshots
+## 📦 Where files are saved
 
+- Audio files are saved to `saved_audio/` in the app folder.
+- A `metadata.json` file tracks entries for the History page.
 
+## 🧩 Troubleshooting
 
-<img width="2000" height="1352" alt="CleanShot 2025-08-21 at 14 11 21@2x" src="https://github.com/user-attachments/assets/aad7932d-843a-4564-8638-10190ff22c62" />
+- If the browser audio player shows “Error” for Mac output, regenerate after this update (files are now WAV).
+- `afconvert` is part of macOS. If conversion fails, ensure you’re on macOS and try installing Xcode command line tools.
 
 ## 🔮 Future Features
 
-### 🎯 Planned Enhancements
+### 🎯 ElevenLabs-Specific Ideas (future)
 
-- [ ] **Voice Selection** - Choose different voices (male/female, accents)
-- [ ] **Audio Export** - Save speech as MP3/WAV files
-- [ ] **Text Import** - Upload text files or paste from clipboard
-- [ ] **Reading Progress Bar** - Visual progress indicator during speech
-- [ ] **Bookmark System** - Save and organize frequently used texts
-- [ ] **Pronunciation Guide** - Custom pronunciation for difficult words
-- [ ] **Batch Processing** - Process multiple texts in queue
-- [ ] **Cross-platform Support** - Windows and Linux compatibility
-- [ ] **Mobile Optimization** - Better mobile interface and controls
+- [ ] **Streaming TTS**: play audio chunks as they arrive for lower latency.
+- [ ] **Optimize Latency Modes**: expose `optimize_streaming_latency` presets.
+- [ ] **Emotion/Style Presets**: one-click presets that map to stability/style combos.
+- [ ] **Voice Cloning**: upload samples to create custom voices, then select them.
+- [ ] **Pronunciation Dictionaries**: manage `pronunciation_dictionary_ids` for names/terms.
+- [ ] **SSML / Prosody Controls**: finer control over pauses, emphasis, breaks.
+- [ ] **Multi-language Auto-detect**: swap to multilingual models when needed.
+- [ ] **History & Reproducibility**: save all generation parameters alongside audio.
+- [ ] **Usage & Cost Tracking**: estimate characters/s and show monthly usage.
+- [ ] **Subtitles/SRT**: align text to timestamps and export captions.
+- [ ] **Batch & Queue**: process many texts and zip outputs.
+- [ ] **Share Links**: signed URLs or public pages to share clips.
 
-### 🚀 Advanced Features
+### 🚀 Advanced (provider‑agnostic)
 
 - [ ] **Word Highlighting** - Real-time word-by-word highlighting (improved sync)
 - [ ] **Speech Analytics** - Reading time estimates and statistics
@@ -101,7 +125,6 @@ Mac-text-to-speech/
 - [ ] **Keyboard Shortcuts** - Quick controls without mouse
 - [ ] **API Integration** - Support for cloud TTS services (Google, AWS, Azure)
 - [ ] **Language Support** - Multi-language text-to-speech
-- [ ] **SSML Support** - Advanced speech markup for better control
 - [ ] **Plugin System** - Extensible architecture for custom features
 
 ### 🔧 Technical Improvements
