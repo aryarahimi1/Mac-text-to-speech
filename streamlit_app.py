@@ -8,6 +8,9 @@ import requests
 import io
 import subprocess
 import threading
+import wave
+import numpy as np
+import sys
 
 st.set_page_config(
     page_title="Text to Speech",
@@ -81,6 +84,10 @@ if 'elevenlabs_voice_id' not in st.session_state:
     st.session_state.elevenlabs_voice_id = ""
 if 'current_audio_file' not in st.session_state:
     st.session_state.current_audio_file = None
+if 'kokoro_voice' not in st.session_state:
+    st.session_state.kokoro_voice = 'af_heart'
+if 'kokoro_lang' not in st.session_state:
+    st.session_state.kokoro_lang = 'a'  # 'a' American English, 'b' British English
 
 def ensure_audio_directory():
     audio_dir = Path("saved_audio")
@@ -203,7 +210,7 @@ def save_audio_file(text, speed_setting, tts_provider, api_key=None, voice_id=No
             except Exception:
                 pass
         
-    else:  # ElevenLabs
+    elif tts_provider == "ElevenLabs":
         filename = f"tts_elevenlabs_{timestamp}.mp3"
         filepath = audio_dir / filename
         
@@ -220,6 +227,42 @@ def save_audio_file(text, speed_setting, tts_provider, api_key=None, voice_id=No
                 f.write(audio_content)
         else:
             return None, None
+    else:  # Kokoro
+        # Lazy import to avoid heavy import on non-Kokoro paths
+        try:
+            from kokoro import KPipeline
+        except Exception as e:
+            st.error(f"Kokoro not installed or failed to import: {e}")
+            return None, None
+
+        filename = f"tts_kokoro_{timestamp}.wav"
+        filepath = audio_dir / filename
+
+        # Configure language and voice
+        kokoro_lang = st.session_state.get('kokoro_lang', 'a')
+        kokoro_voice = st.session_state.get('kokoro_voice', 'af_heart')
+
+        try:
+            pipeline = KPipeline(lang_code=kokoro_lang)
+            # Write 24kHz mono 16-bit PCM WAV as per Kokoro README
+            with wave.open(str(filepath.resolve()), "wb") as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(24000)
+
+                for result in pipeline(text, voice=kokoro_voice, speed=speed_setting, split_pattern=r"\n+"):
+                    if result.audio is None:
+                        continue
+                    audio_bytes = (result.audio.numpy() * 32767).astype(np.int16).tobytes()
+                    wav_file.writeframes(audio_bytes)
+        except Exception as e:
+            st.error(f"Kokoro generation failed: {e}")
+            if filepath.exists():
+                try:
+                    filepath.unlink()
+                except Exception:
+                    pass
+            return None, None
     
     metadata = {
         "filename": filename,
@@ -228,7 +271,10 @@ def save_audio_file(text, speed_setting, tts_provider, api_key=None, voice_id=No
         "provider": tts_provider,
         "timestamp": timestamp,
         "created": datetime.datetime.now().isoformat(),
-        "voice_id": voice_id if tts_provider == "ElevenLabs" else None
+        "voice_id": voice_id if tts_provider == "ElevenLabs" else None,
+        "kokoro_voice": st.session_state.get('kokoro_voice') if tts_provider == "Kokoro (local open model)" else None,
+        "kokoro_lang": st.session_state.get('kokoro_lang') if tts_provider == "Kokoro (local open model)" else None,
+
     }
     
     metadata_file = audio_dir / "metadata.json"
@@ -260,7 +306,7 @@ def main_tts_page():
     st.markdown("### 🎙️ Text-to-Speech Provider")
     tts_provider = st.selectbox(
         "Choose TTS provider:",
-        ["Mac (say command)", "ElevenLabs"],
+        ["Mac (say command)", "ElevenLabs", "Kokoro (local open model)"],
         key="tts_provider_selector"
     )
     st.session_state.tts_provider = tts_provider
@@ -342,6 +388,34 @@ def main_tts_page():
         else:
             st.warning("⚠️ Please enter your ElevenLabs API key to continue.")
             return
+    elif tts_provider == "Kokoro (local open model)":
+        # Require Python 3.10+ for Kokoro package
+        if sys.version_info < (3, 10):
+            st.error("Kokoro requires Python 3.10+. Your environment is using Python %d.%d. Please recreate the venv with Python 3.10+ to use Kokoro." % (sys.version_info.major, sys.version_info.minor))
+            return
+        st.markdown("#### 🧠 Kokoro Configuration (Local, Open-Weight)")
+
+        kokoro_lang_label = st.selectbox(
+            "Language:",
+            options=[
+                "American English (a)",
+                "British English (b)",
+            ],
+            index=0,
+            key="kokoro_lang_selector",
+            help="Kokoro currently supports English best. More languages may require extra installs."
+        )
+        st.session_state.kokoro_lang = 'a' if kokoro_lang_label.startswith('American') else 'b'
+
+        # Voice input with sensible default
+        default_voice = 'af_heart' if st.session_state.kokoro_lang == 'a' else 'bf_yuna'
+        kokoro_voice = st.text_input(
+            "Voice (e.g., af_heart)",
+            value=st.session_state.get('kokoro_voice', default_voice) or default_voice,
+            help="Enter a Kokoro voice ID, like af_heart (US) or bf_... (UK). See the Kokoro model card for samples.",
+            key="kokoro_voice_input"
+        )
+        st.session_state.kokoro_voice = kokoro_voice.strip() or default_voice
     
     st.markdown("### ⚡ Speed Control")
     speed_options = {
@@ -422,6 +496,23 @@ def main_tts_page():
                         st.rerun()
                     else:
                         st.error("Failed to generate audio with ElevenLabs. Check your API key and quota.")
+                elif tts_provider == "Kokoro (local open model)":
+                    with st.spinner("Generating audio with Kokoro (local)..."):
+                        filepath, metadata = save_audio_file(
+                            text_input,
+                            st.session_state.speed_setting,
+                            tts_provider,
+                        )
+
+                    if filepath and metadata:
+                        st.session_state.last_spoken_text = text_input
+                        st.session_state.is_speaking = False
+                        st.success(f"Generated Kokoro audio at {st.session_state.speed_setting}x speed")
+                        st.info(f"💾 Audio saved as: {metadata['filename']}")
+                        st.rerun()
+                    else:
+                        st.error("Failed to generate audio with Kokoro. Check logs and internet for first-time weights download.")
+                
             else:
                 st.error("Please enter some text to speak!")
 
@@ -475,17 +566,19 @@ def main_tts_page():
     st.markdown("---")
     st.markdown("""
     ### Instructions:
-    1. **Choose your TTS provider** - Mac (free, built-in) or ElevenLabs (premium, API required)
+    1. **Choose your TTS provider** — Mac (free, built-in), ElevenLabs (premium, API required), or Kokoro (local, open)
     2. **For ElevenLabs**: Enter your API key and select a voice
-    3. **Choose your speed** - Select from 0.75x (slower) to 2.0x (very fast)
-    4. **Type your message** in the large text box above (supports multiple lines)
-    5. **Click Submit** to start speaking your text at the selected speed
-    6. **Audio is automatically saved** and can be accessed in Audio History
-    7. **Click Stop** to interrupt the speech at any time
+    3. **For Kokoro**: Choose language and voice (runs locally, no API key)
+    4. **Choose your speed** — Select from 0.75x (slower) to 2.0x (very fast)
+    5. **Type your message** in the large text box above (supports multiple lines)
+    6. **Click Submit** to start speaking your text at the selected speed
+    7. **Audio is automatically saved** and can be accessed in Audio History
+    8. **Click Stop** to interrupt the speech at any time
 
     **TTS Providers:**
     - **Mac (say command)**: Free, built-in macOS voices, works offline
     - **ElevenLabs**: Premium AI voices, requires API key, online connection needed
+    - **Kokoro (local, open-weight)**: Free, runs entirely on your machine, no API key, high‑quality neural TTS
 
     **Speed Options:**
     - **0.75x**: Slower, good for learning or difficult text
@@ -554,6 +647,8 @@ def audio_history_page():
                         mime_type = "audio/aiff"
                     elif metadata['filename'].endswith('.mp3'):
                         mime_type = "audio/mpeg"
+                    elif metadata['filename'].endswith('.wav'):
+                        mime_type = "audio/wav"
                     else:
                         mime_type = "audio/mpeg"
                     

@@ -1,6 +1,10 @@
 # 🗣️ Text to Speech Web App
 
-A simple and elegant text-to-speech web application built with Streamlit that converts your text into speech using macOS's built-in `say` command or ElevenLabs' API for premium AI voices.
+A simple and elegant text-to-speech web application built with Streamlit that converts your text into speech using:
+
+- macOS's built‑in `say` command (free, offline)
+- ElevenLabs API (premium AI voices)
+- Kokoro (local, open‑weight neural TTS — runs entirely on your machine)
 
 ## ✨ Features
 
@@ -12,14 +16,15 @@ A simple and elegant text-to-speech web application built with Streamlit that co
 - Start/Stop TTS controls (Stop affects macOS `say`; player controls are separate)
 - Audio saving with history page (play, download, delete)
 - macOS output saved as WAV for browser compatibility (AIFF → WAV conversion)
-- ElevenLabs integration: enter API key and pick a voice
+- ElevenLabs integration: enter API key and pick a voice (+ optional advanced params)
+- Kokoro provider: high‑quality local TTS, no API key, saves WAV
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - macOS (required for the `say` command) OR any OS for ElevenLabs (internet required)
-- Python 3.9 or higher
+- Python 3.10+ recommended (Kokoro requires Python ≥ 3.10)
 - pip package manager
 - (Optional) ElevenLabs account and API key: https://elevenlabs.io
 
@@ -51,8 +56,17 @@ A simple and elegant text-to-speech web application built with Streamlit that co
 4. Type your text and click Submit. The generated MP3 will be saved in `saved_audio/` and appear in Audio History.
 
 Notes:
-- Current build uses the `eleven_monolingual_v1` model and adjusts voice settings based on speed.
-- No model picker yet; can be added later.
+- Default model is `eleven_monolingual_v1`. You can optionally choose other models and tweak voice parameters in the UI.
+
+## 🧠 Using Kokoro (Local, Open‑weight)
+
+1. Select "Kokoro (local open model)" as the provider.
+2. Choose language (American/British English) and provide a voice ID (defaults like `af_heart`).
+3. Pick your speed and enter text, then click Submit. Output is saved as WAV.
+
+Notes:
+- Requires Python 3.10+. On first use, it may download model weights; this can take a minute.
+- Runs fully locally (no API key). Performance depends on your machine.
 
 ## 🎮 Usage
 
@@ -71,6 +85,11 @@ Notes:
 
 5. **Click Stop** to interrupt speech at any time
 
+Provider quick tips:
+- Mac: free and offline; uses built‑in voices; output is WAV.
+- ElevenLabs: requires API key; returns MP3; great quality and many voices.
+- Kokoro: local neural TTS; no API key; returns WAV.
+
 ## 📁 Project Structure
 
 ```
@@ -87,6 +106,7 @@ Mac-text-to-speech/
 - Framework: Streamlit
 - macOS TTS: `say -r <rate>` generates AIFF; app converts to WAV using `afconvert` for browser playback
 - ElevenLabs: REST API via `requests`; returns MP3
+- Kokoro: Python pipeline (KPipeline) streams audio; writes 24 kHz mono 16‑bit WAV
 - Styling: custom CSS
 - State: Streamlit session_state
 
@@ -99,6 +119,13 @@ Mac-text-to-speech/
 
 - If the browser audio player shows “Error” for Mac output, regenerate after this update (files are now WAV).
 - `afconvert` is part of macOS. If conversion fails, ensure you’re on macOS and try installing Xcode command line tools.
+- Kokoro import errors: ensure Python ≥ 3.10 and that requirements installed successfully. First run may download weights.
+
+## 🆕 What’s New
+
+- Added Kokoro as a local, open‑weight TTS provider (no API key)
+- Updated in‑app Instructions and README to reflect provider choices and usage
+- Saved audio now consistently uses WAV for Mac/Kokoro and MP3 for ElevenLabs
 
 ## 🔮 Future Features
 
