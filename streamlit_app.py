@@ -88,6 +88,14 @@ if 'kokoro_voice' not in st.session_state:
     st.session_state.kokoro_voice = 'af_heart'
 if 'kokoro_lang' not in st.session_state:
     st.session_state.kokoro_lang = 'a'  # 'a' American English, 'b' British English
+if 'chatterbox_exaggeration' not in st.session_state:
+    st.session_state.chatterbox_exaggeration = 0.5
+if 'chatterbox_cfg_weight' not in st.session_state:
+    st.session_state.chatterbox_cfg_weight = 0.5
+if 'chatterbox_temperature' not in st.session_state:
+    st.session_state.chatterbox_temperature = 0.8
+if 'chatterbox_audio_prompt' not in st.session_state:
+    st.session_state.chatterbox_audio_prompt = None
 
 def ensure_audio_directory():
     audio_dir = Path("saved_audio")
@@ -186,7 +194,7 @@ def audio_player_controls():
     except Exception as e:
         st.error(f"Error loading audio file: {str(e)}")
 
-def save_audio_file(text, speed_setting, tts_provider, api_key=None, voice_id=None, model_id=None, voice_settings_override=None):
+def save_audio_file(text, speed_setting, tts_provider, api_key=None, voice_id=None, model_id=None, voice_settings_override=None, audio_prompt_path=None):
     """Save TTS audio to a file and return the filepath"""
     audio_dir = ensure_audio_directory()
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -226,6 +234,59 @@ def save_audio_file(text, speed_setting, tts_provider, api_key=None, voice_id=No
             with open(filepath, 'wb') as f:
                 f.write(audio_content)
         else:
+            return None, None
+    elif tts_provider == "Chatterbox (open-source)":
+        # Lazy import to avoid heavy import on non-Chatterbox paths
+        try:
+            import torch
+            import torchaudio as ta
+            from chatterbox.tts import ChatterboxTTS
+        except Exception as e:
+            st.error(f"Chatterbox not installed or failed to import: {e}")
+            return None, None
+
+        filename = f"tts_chatterbox_{timestamp}.wav"
+        filepath = audio_dir / filename
+
+        try:
+            # Determine best device
+            if torch.cuda.is_available():
+                device = "cuda"
+            elif torch.backends.mps.is_available():
+                device = "mps"
+            else:
+                device = "cpu"
+
+            # Load model (this might take time on first run)
+            model = ChatterboxTTS.from_pretrained(device=device)
+
+            # Get settings from session state
+            exaggeration = st.session_state.get('chatterbox_exaggeration', 0.5)
+            cfg_weight = st.session_state.get('chatterbox_cfg_weight', 0.5)
+            temperature = st.session_state.get('chatterbox_temperature', 0.8)
+            
+            # Generate audio
+            wav = model.generate(
+                text,
+                audio_prompt_path=audio_prompt_path,
+                exaggeration=exaggeration,
+                cfg_weight=cfg_weight,
+                temperature=temperature,
+                repetition_penalty=1.2,
+                min_p=0.05,
+                top_p=1.0,
+            )
+            
+            # Save audio file
+            ta.save(str(filepath), wav, model.sr)
+            
+        except Exception as e:
+            st.error(f"Chatterbox generation failed: {e}")
+            if filepath.exists():
+                try:
+                    filepath.unlink()
+                except Exception:
+                    pass
             return None, None
     else:  # Kokoro
         # Lazy import to avoid heavy import on non-Kokoro paths
@@ -274,7 +335,10 @@ def save_audio_file(text, speed_setting, tts_provider, api_key=None, voice_id=No
         "voice_id": voice_id if tts_provider == "ElevenLabs" else None,
         "kokoro_voice": st.session_state.get('kokoro_voice') if tts_provider == "Kokoro (local open model)" else None,
         "kokoro_lang": st.session_state.get('kokoro_lang') if tts_provider == "Kokoro (local open model)" else None,
-
+        "chatterbox_exaggeration": st.session_state.get('chatterbox_exaggeration') if tts_provider == "Chatterbox (open-source)" else None,
+        "chatterbox_cfg_weight": st.session_state.get('chatterbox_cfg_weight') if tts_provider == "Chatterbox (open-source)" else None,
+        "chatterbox_temperature": st.session_state.get('chatterbox_temperature') if tts_provider == "Chatterbox (open-source)" else None,
+        "audio_prompt_path": audio_prompt_path if tts_provider == "Chatterbox (open-source)" else None,
     }
     
     metadata_file = audio_dir / "metadata.json"
@@ -306,7 +370,7 @@ def main_tts_page():
     st.markdown("### 🎙️ Text-to-Speech Provider")
     tts_provider = st.selectbox(
         "Choose TTS provider:",
-        ["Mac (say command)", "ElevenLabs", "Kokoro (local open model)"],
+        ["Mac (say command)", "ElevenLabs", "Kokoro (local open model)", "Chatterbox (open-source)"],
         key="tts_provider_selector"
     )
     st.session_state.tts_provider = tts_provider
@@ -416,6 +480,34 @@ def main_tts_page():
             key="kokoro_voice_input"
         )
         st.session_state.kokoro_voice = kokoro_voice.strip() or default_voice
+    elif tts_provider == "Kokoro (local open model)":
+        # Require Python 3.10+ for Kokoro package
+        if sys.version_info < (3, 10):
+            st.error("Kokoro requires Python 3.10+. Your environment is using Python %d.%d. Please recreate the venv with Python 3.10+ to use Kokoro." % (sys.version_info.major, sys.version_info.minor))
+            return
+        st.markdown("#### 🧠 Kokoro Configuration (Local, Open-Weight)")
+
+        kokoro_lang_label = st.selectbox(
+            "Language:",
+            options=[
+                "American English (a)",
+                "British English (b)",
+            ],
+            index=0,
+            key="kokoro_lang_selector",
+            help="Kokoro currently supports English best. More languages may require extra installs."
+        )
+        st.session_state.kokoro_lang = 'a' if kokoro_lang_label.startswith('American') else 'b'
+
+        # Voice input with sensible default
+        default_voice = 'af_heart' if st.session_state.kokoro_lang == 'a' else 'bf_yuna'
+        kokoro_voice = st.text_input(
+            "Voice (e.g., af_heart)",
+            value=st.session_state.get('kokoro_voice', default_voice) or default_voice,
+            help="Enter a Kokoro voice ID, like af_heart (US) or bf_... (UK). See the Kokoro model card for samples.",
+            key="kokoro_voice_input"
+        )
+        st.session_state.kokoro_voice = kokoro_voice.strip() or default_voice
     
     st.markdown("### ⚡ Speed Control")
     speed_options = {
@@ -496,6 +588,33 @@ def main_tts_page():
                         st.rerun()
                     else:
                         st.error("Failed to generate audio with ElevenLabs. Check your API key and quota.")
+                elif tts_provider == "Chatterbox (open-source)":
+                    # Get the audio prompt path from the current upload
+                    chatterbox_audio_path = None
+                    if 'chatterbox_audio_prompt_uploader' in st.session_state and st.session_state.chatterbox_audio_prompt_uploader is not None:
+                        temp_dir = Path("temp_audio")
+                        temp_dir.mkdir(exist_ok=True)
+                        temp_audio_path = temp_dir / f"temp_{st.session_state.chatterbox_audio_prompt_uploader.name}"
+                        with open(temp_audio_path, "wb") as f:
+                            f.write(st.session_state.chatterbox_audio_prompt_uploader.getvalue())
+                        chatterbox_audio_path = str(temp_audio_path)
+                    
+                    with st.spinner("Generating audio with Chatterbox (first run may take longer)..."):
+                        filepath, metadata = save_audio_file(
+                            text_input,
+                            st.session_state.speed_setting,
+                            tts_provider,
+                            audio_prompt_path=chatterbox_audio_path,
+                        )
+
+                    if filepath and metadata:
+                        st.session_state.last_spoken_text = text_input
+                        st.session_state.is_speaking = False
+                        st.success(f"Generated Chatterbox audio with exaggeration={st.session_state.chatterbox_exaggeration}")
+                        st.info(f"💾 Audio saved as: {metadata['filename']}")
+                        st.rerun()
+                    else:
+                        st.error("Failed to generate audio with Chatterbox. Check logs and ensure model can be downloaded.")
                 elif tts_provider == "Kokoro (local open model)":
                     with st.spinner("Generating audio with Kokoro (local)..."):
                         filepath, metadata = save_audio_file(
@@ -566,19 +685,21 @@ def main_tts_page():
     st.markdown("---")
     st.markdown("""
     ### Instructions:
-    1. **Choose your TTS provider** — Mac (free, built-in), ElevenLabs (premium, API required), or Kokoro (local, open)
+    1. **Choose your TTS provider** — Mac (free, built-in), ElevenLabs (premium, API required), Kokoro (local, open), or Chatterbox (state-of-the-art, open-source)
     2. **For ElevenLabs**: Enter your API key and select a voice
     3. **For Kokoro**: Choose language and voice (runs locally, no API key)
-    4. **Choose your speed** — Select from 0.75x (slower) to 2.0x (very fast)
-    5. **Type your message** in the large text box above (supports multiple lines)
-    6. **Click Submit** to start speaking your text at the selected speed
-    7. **Audio is automatically saved** and can be accessed in Audio History
-    8. **Click Stop** to interrupt the speech at any time
+    4. **For Chatterbox**: Upload reference audio for voice cloning, adjust emotion exaggeration and pacing
+    5. **Choose your speed** — Select from 0.75x (slower) to 2.0x (very fast)
+    6. **Type your message** in the large text box above (supports multiple lines)
+    7. **Click Submit** to start speaking your text at the selected speed
+    8. **Audio is automatically saved** and can be accessed in Audio History
+    9. **Click Stop** to interrupt the speech at any time
 
     **TTS Providers:**
     - **Mac (say command)**: Free, built-in macOS voices, works offline
     - **ElevenLabs**: Premium AI voices, requires API key, online connection needed
     - **Kokoro (local, open-weight)**: Free, runs entirely on your machine, no API key, high‑quality neural TTS
+    - **Chatterbox (open-source)**: State-of-the-art TTS with emotion control and voice cloning, runs locally, watermarked outputs
 
     **Speed Options:**
     - **0.75x**: Slower, good for learning or difficult text
@@ -621,6 +742,11 @@ def audio_history_page():
                 st.markdown(f"**Provider:** {metadata.get('provider', 'Mac (say command)')}")
                 if metadata.get('voice_id'):
                     st.markdown(f"**Voice ID:** {metadata['voice_id']}")
+                if metadata.get('chatterbox_exaggeration'):
+                    st.markdown(f"**Chatterbox Exaggeration:** {metadata['chatterbox_exaggeration']}")
+                    st.markdown(f"**CFG Weight:** {metadata.get('chatterbox_cfg_weight', 'N/A')}")
+                if metadata.get('kokoro_voice'):
+                    st.markdown(f"**Kokoro Voice:** {metadata['kokoro_voice']}")
                 st.markdown(f"**Created:** {datetime.datetime.fromisoformat(metadata['created']).strftime('%Y-%m-%d %H:%M:%S')}")
                 
                 # Show full text if long

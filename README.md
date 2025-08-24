@@ -1,10 +1,62 @@
 # 🗣️ Text to Speech Web App
 
-A simple and elegant text-to-speech web application built with Streamlit that converts your text into speech using:
+A comprehensive text-to-speech web application built with Streamlit that converts your text into speech using:
 
-- macOS's built‑in `say` command (free, offline)
+- macOS's built‑in `say` command (f## 🧩 Troubleshooting
+
+### Python## 🆕 What's New
+
+- **Added Chatterbox**: State-of-the-art open-source TTS with emotion control and voice cloning
+- **Emotion Controls**: Adjust emotional intensity and speech pacing
+- **Voice Cloning**: Upload reference audio for custom voice replication
+- **Neural Watermarking**: Responsible AI features built into Chatterbox
+- Added Kokoro as a local, open‑weight TTS provider (no API key)
+- Updated in‑app Instructions and README to reflect provider choices and usage
+- Saved audio now consistently uses WAV for Mac/Kokoro/Chatterbox and MP3 for ElevenLabsion Issues
+```bash
+# Check if you have the right Python version
+python3 --version  # Should be 3.10 or higher
+
+# Check if Kokoro can import (requires 3.10+)
+python3 -c "import sys; print(f'Python {sys.version_info.major}.{sys.version_info.minor}')"
+```
+
+### Installation Issues
+```bash
+# Reinstall with force
+pip install --force-reinstall -r requirements.txt
+
+# Check for conflicts
+pip check
+
+# Update pip if needed
+pip install --upgrade pip
+```
+
+### Audio Issues
+- If the browser audio player shows "Error" for Mac output, regenerate after this update (files are now WAV).
+- `afconvert` is part of macOS. If conversion fails, ensure you're on macOS and try installing Xcode command line tools.
+- Kokoro import errors: ensure Python ≥ 3.10 and that requirements installed successfully. First run may download weights.
+- Chatterbox model download: First run downloads ~1GB model; ensure stable internet connection.offline)
 - ElevenLabs API (premium AI voices)
 - Kokoro (local, open‑weight neural TTS — runs entirely on your machine)
+- Chatterbox (state-of-the-art open-source TTS with emotion control and voice cloning)
+
+## 📋 System Requirements
+
+### Python Version
+- **Minimum:** Python 3.10+ (required for Kokoro TTS)
+- **Recommended:** Python 3.11 or 3.12
+
+### pip Version
+- **Minimum:** pip 21.0+
+- **Recommended:** pip 23.0+ (latest)
+
+### Check Your Versions
+```bash
+python3 --version
+pip3 --version
+```
 
 ## ✨ Features
 
@@ -18,14 +70,22 @@ A simple and elegant text-to-speech web application built with Streamlit that co
 - macOS output saved as WAV for browser compatibility (AIFF → WAV conversion)
 - ElevenLabs integration: enter API key and pick a voice (+ optional advanced params)
 - Kokoro provider: high‑quality local TTS, no API key, saves WAV
+- **Chatterbox provider**: state-of-the-art TTS with emotion control, voice cloning, and neural watermarking
+
+### 🎭 Chatterbox Advanced Features
+- **Emotion Exaggeration**: Control emotional intensity (0.25-2.0x)
+- **CFG Weight**: Adjust speech pacing (0.0-1.0)
+- **Temperature**: Control speech variation (0.1-2.0)
+- **Voice Cloning**: Upload 3-10 second audio clips for voice replication
+- **Neural Watermarking**: Built-in responsible AI features
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- macOS (required for the `say` command) OR any OS for ElevenLabs (internet required)
-- Python 3.10+ recommended (Kokoro requires Python ≥ 3.10)
-- pip package manager
+- macOS (required for the `say` command) OR any OS for ElevenLabs/Kokoro/Chatterbox
+- **Python 3.10+** (required for Kokoro and optimal for all providers)
+- **pip 21.0+** (recommended: pip 23.0+)
 - (Optional) ElevenLabs account and API key: https://elevenlabs.io
 
 ### Installation
@@ -36,8 +96,15 @@ A simple and elegant text-to-speech web application built with Streamlit that co
    cd Mac-text-to-speech
    ```
 
-2. **Install dependencies**
+2. **Create virtual environment (recommended)**
    ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+3. **Upgrade pip and install dependencies**
+   ```bash
+   pip install --upgrade pip
    pip install -r requirements.txt
    ```
 
@@ -57,6 +124,19 @@ A simple and elegant text-to-speech web application built with Streamlit that co
 
 Notes:
 - Default model is `eleven_monolingual_v1`. You can optionally choose other models and tweak voice parameters in the UI.
+
+## 🎭 Using Chatterbox (State-of-the-Art Open Source)
+
+1. Select "Chatterbox (open-source)" as the provider.
+2. **Optional**: Upload a 3-10 second reference audio file for voice cloning.
+3. Adjust emotion exaggeration (0.25-2.0) for dramatic or subdued speech.
+4. Fine-tune CFG weight (0.0-1.0) to control speech pacing.
+5. Type your text and click Submit. High-quality WAV will be saved.
+
+Notes:
+- First run downloads the model (may take a few minutes).
+- Runs fully locally with neural watermarking for responsible AI.
+- Best results with clear, short reference audio for voice cloning.
 
 ## 🧠 Using Kokoro (Local, Open‑weight)
 
@@ -86,11 +166,25 @@ Notes:
 5. **Click Stop** to interrupt speech at any time
 
 Provider quick tips:
-- Mac: free and offline; uses built‑in voices; output is WAV.
-- ElevenLabs: requires API key; returns MP3; great quality and many voices.
-- Kokoro: local neural TTS; no API key; returns WAV.
+- **Mac**: free and offline; uses built‑in voices; output is WAV.
+- **ElevenLabs**: requires API key; returns MP3; great quality and many voices.
+- **Kokoro**: local neural TTS; no API key; returns WAV.
+- **Chatterbox**: state-of-the-art local TTS; emotion control; voice cloning; returns WAV.
 
-## 📁 Project Structure
+## � Dependencies
+
+```txt
+streamlit>=1.28.0           # Web interface
+requests>=2.31.0            # HTTP requests for ElevenLabs
+torch>=2.6.0                # PyTorch for ML models (Chatterbox)
+torchaudio>=2.6.0           # Audio processing (Chatterbox)
+numpy>=1.21.0               # Numerical computing
+chatterbox-tts>=0.1.2       # Chatterbox TTS with emotion control
+kokoro @ git+https://github.com/hexgrad/kokoro.git     # Kokoro local TTS
+misaki[en] @ git+https://github.com/hexgrad/misaki.git # Text processing
+```
+
+## �📁 Project Structure
 
 ```
 Mac-text-to-speech/
@@ -104,9 +198,10 @@ Mac-text-to-speech/
 ## 🛠️ Technical Details
 
 - Framework: Streamlit
-- macOS TTS: `say -r <rate>` generates AIFF; app converts to WAV using `afconvert` for browser playback
-- ElevenLabs: REST API via `requests`; returns MP3
-- Kokoro: Python pipeline (KPipeline) streams audio; writes 24 kHz mono 16‑bit WAV
+- **macOS TTS**: `say -r <rate>` generates AIFF; app converts to WAV using `afconvert` for browser playback
+- **ElevenLabs**: REST API via `requests`; returns MP3
+- **Kokoro**: Python pipeline (KPipeline) streams audio; writes 24 kHz mono 16‑bit WAV
+- **Chatterbox**: PyTorch-based neural TTS with emotion control; writes WAV with watermarking
 - Styling: custom CSS
 - State: Streamlit session_state
 
