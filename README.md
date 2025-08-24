@@ -4,7 +4,34 @@ A comprehensive text-to-speech web application built with Streamlit that convert
 
 - macOS's built‑in `say` command (f## 🧩 Troubleshooting
 
-### Python## 🆕 What's New
+### Python#### 🧩 Troubleshooting
+
+### Python Version Issues
+```bash
+# Check if you have the compatible Python version
+python3 --version  # Should show Python 3.12 for best results
+
+# Check if Kokoro can import (requires 3.10+)
+python3 -c "import sys; print(f'Python {sys.version_info.major}.{sys.version_info.minor}')"
+```
+
+### Installation Issues
+```bash
+# Reinstall with force
+pip install --force-reinstall -r requirements.txt
+
+# Check for conflicts
+pip check
+
+# Update pip if needed
+pip install --upgrade pip
+```
+
+### Audio Issues
+- If the browser audio player shows "Error" for Mac output, regenerate after this update (files are now WAV).
+- `afconvert` is part of macOS. If conversion fails, ensure you're on macOS and try installing Xcode command line tools.
+- Kokoro import errors: ensure Python ≥ 3.10 and that requirements installed successfully. First run may download weights.
+- Chatterbox model download: First run downloads ~1GB model; ensure stable internet connection.hat's New
 
 - **Added Chatterbox**: State-of-the-art open-source TTS with emotion control and voice cloning
 - **Emotion Controls**: Adjust emotional intensity and speech pacing
@@ -46,16 +73,16 @@ pip install --upgrade pip
 
 ### Python Version
 - **Minimum:** Python 3.10+ (required for Kokoro TTS)
-- **Recommended:** Python 3.11 or 3.12
+- **Tested & Compatible:** Python 3.12
 
 ### pip Version
 - **Minimum:** pip 21.0+
-- **Recommended:** pip 23.0+ (latest)
+- **Tested & Compatible:** pip 25.2
 
 ### Check Your Versions
 ```bash
-python3 --version
-pip3 --version
+python3 --version  # Should show Python 3.12 for best compatibility
+pip3 --version     # Should show pip 25.2 or higher
 ```
 
 ## ✨ Features
@@ -84,8 +111,8 @@ pip3 --version
 ### Prerequisites
 
 - macOS (required for the `say` command) OR any OS for ElevenLabs/Kokoro/Chatterbox
-- **Python 3.10+** (required for Kokoro and optimal for all providers)
-- **pip 21.0+** (recommended: pip 23.0+)
+- **Python 3.12** (tested and fully compatible)
+- **pip 25.2** (tested and fully compatible)
 - (Optional) ElevenLabs account and API key: https://elevenlabs.io
 
 ### Installation
